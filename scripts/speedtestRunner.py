@@ -5,14 +5,18 @@
 # modifications by roest - https://github.com/roest01
 
 import os
+import sys
 import csv
 import datetime
 import time
+import traceback
 from speedtest import Speedtest
 
 #static values
 CSV_FIELDNAMES=["timestamp", "ping", "download", "upload"]
 FILEPATH = os.path.dirname(os.path.abspath(__file__)) + '/../data/result.csv'
+MAX_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 30
 
 def runSpeedtest():
         #run speedtest-cli
@@ -22,7 +26,8 @@ def runSpeedtest():
         servers = []
         threads = None
 
-        s = Speedtest()
+        #speedtest.net rejects plain HTTP requests with "403 Forbidden", so use HTTPS
+        s = Speedtest(secure=True)
         s.get_servers(servers)
         s.get_best_server()
         s.download(threads=threads)
@@ -59,5 +64,16 @@ def runSpeedtest():
         print("Upload: %d [Mbit/s]" %(upload))
 
 if __name__ == '__main__':
-        runSpeedtest()
-        print('speedtest complete')
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+                try:
+                        runSpeedtest()
+                        print('speedtest complete')
+                        sys.exit(0)
+                except Exception:
+                        sys.stderr.write('%s speedtest attempt %d/%d failed:\n' % (datetime.datetime.now().isoformat(), attempt, MAX_ATTEMPTS))
+                        traceback.print_exc()
+                        if attempt < MAX_ATTEMPTS:
+                                time.sleep(RETRY_DELAY_SECONDS)
+
+        sys.stderr.write('speedtest failed after %d attempts\n' % MAX_ATTEMPTS)
+        sys.exit(1)
