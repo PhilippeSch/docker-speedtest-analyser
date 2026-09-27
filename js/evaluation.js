@@ -275,12 +275,17 @@ jQuery(document).ready(function(){
 
             buttonHelper.loading();
 
-            jQuery.get( "/run_speedtest", function( data ) {
-                buttonHelper.reset();
-                parseManager.flushChart(true, function(){
-                    parseManager.parse();
+            jQuery.get( "/run_speedtest" )
+                .fail(function( xhr ) {
+                    let message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : xhr.statusText;
+                    alert("Speedtest failed: " + message);
+                })
+                .always(function() {
+                    buttonHelper.reset();
+                    parseManager.flushChart(true, function(){
+                        parseManager.parse();
+                    });
                 });
-            });
         });
     });
 });
